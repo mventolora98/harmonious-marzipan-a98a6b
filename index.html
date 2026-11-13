@@ -744,12 +744,15 @@ async function showPortal() {
     return;
   }
   const {data,error} = await supabase.auth.getUser();
-  if (!error && data.user) {
+  if (!error && data.user && data.user.email_confirmed_at) {
     showView('dashboardView');
     el('welcomeText').textContent =
       'Signed in as ' + data.user.email;
   } else {
     showLogin();
+    if (data?.user && !data.user.email_confirmed_at) {
+      msg('Please verify your email before accessing the dashboard.', true);
+    }
   }
 }
 
@@ -811,6 +814,10 @@ el('loginForm').addEventListener('submit',e => {
         password:el('loginPassword').value
       });
     if (error) throw error;
+    if (!data.user?.email_confirmed_at) {
+      await supabase.auth.signOut();
+      throw Error('Please verify your email using the confirmation link before signing in.');
+    }
     el('loginForm').reset();
     showView('dashboardView');
     el('welcomeText').textContent =
@@ -834,6 +841,7 @@ el('registerForm').addEventListener('submit',e => {
     });
     if (error) throw error;
     el('registerForm').reset();
+    showView('loginView');
     msg(
       'If registration was accepted, check your email ' +
       'for a verification link. Then return here to sign in.'
@@ -874,8 +882,8 @@ el('updatePasswordForm').addEventListener('submit',e => {
     });
     if (error) throw error;
     el('updatePasswordForm').reset();
-    showView('dashboardView');
-    msg('Password updated successfully.');
+    showLogin();
+    msg('Password updated. Please sign in with your new password.');
   });
 });
 
