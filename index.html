@@ -343,6 +343,17 @@ footer {
 .owner-table th,.owner-table td { padding:15px 12px;border-bottom:1px solid #dbe6f5;font-size:14px; }
 .owner-table th { color:var(--navy);background:#f5f8fd; }
 .owner-table td { overflow-wrap:anywhere; }
+.mailing-layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(260px,1fr);gap:20px;margin-top:20px}
+.mailing-choice,.mailing-summary{border:1px solid #dbe6f5;border-radius:14px;padding:22px;min-width:0}
+.mailing-choice h4,.mailing-summary h4{margin:8px 0 18px;color:var(--navy)}
+.mailing-option{display:flex;align-items:flex-start;gap:12px;padding:15px;border:1px solid #dbe6f5;border-radius:12px;margin:10px 0;cursor:pointer}
+.mailing-option input,.mailing-consent input{margin-top:4px;accent-color:#2479f2}
+.mailing-option span{display:flex;flex-direction:column;gap:5px}
+.mailing-option small{color:var(--muted);line-height:1.5}
+.mailing-consent{display:flex;gap:10px;align-items:flex-start;margin:18px 0;line-height:1.5}
+.mailing-stages{padding-left:22px;color:var(--muted);line-height:2}
+.mailing-choice button:disabled{opacity:.55;cursor:not-allowed}
+@media(max-width:720px){.mailing-layout{grid-template-columns:1fr}}
 </style>
 </head>
 
@@ -620,6 +631,7 @@ footer {
     <button type="button" class="dash-tab active" data-panel="overview" aria-current="page">Overview</button>
     <button type="button" class="dash-tab" data-panel="reports">Credit Reports</button>
     <button type="button" class="dash-tab" data-panel="disputes">Dispute Center</button>
+    <button type="button" class="dash-tab" data-panel="mailing">Mailing Center</button>
     <button type="button" class="dash-tab" data-panel="education">Credit Education</button>
     <button type="button" class="dash-tab" data-panel="settings">Account Settings</button>
   </nav>
@@ -637,6 +649,41 @@ footer {
   </div>
   <div class="dash-panel hidden" data-section="disputes">
     <div class="dashboard-panel"><span class="dash-pill">Demo only</span><h3>Dispute Center</h3><p>This is a preview of future dispute organization and correspondence tracking. No disputes can be created, transmitted, or filed here.</p><div class="dash-empty">No dispute cases. Letter generation and submission are not available.</div><p>Only information you believe is inaccurate or incomplete should be disputed. No deletion or score improvement is guaranteed.</p></div>
+  </div>
+  <div class="dash-panel hidden" data-section="mailing">
+    <div class="dashboard-panel">
+      <span class="dash-pill">Simulation only — No physical mail sent</span>
+      <h3>Mailing Center</h3>
+      <p>Explore how approved dispute letters could be printed and mailed in the future. This demo uses fictional recipient information and never sends a mailing request.</p>
+      <div class="mailing-layout">
+        <div class="mailing-choice">
+          <h4>1. Choose a USPS mailing option</h4>
+          <label class="mailing-option"><input type="radio" name="demoMailType" value="standard" checked><span><strong>Standard mail</strong><small>Lower-cost option. Delivery confirmation may not be available.</small></span></label>
+          <label class="mailing-option"><input type="radio" name="demoMailType" value="certified"><span><strong>Certified mail</strong><small>Proof of mailing and tracking; return receipt may be available for an additional charge.</small></span></label>
+          <h4>2. Review fictional letter</h4>
+          <div class="dash-empty" style="text-align:left">
+            <strong>Sample letter — not an actual dispute</strong><br>
+            From: Demo Customer<br>
+            To: Example Credit Reporting Agency<br>
+            Subject: Request to review potentially inaccurate information<br><br>
+            This sample illustrates the review process. A real letter would require accurate details, supporting documentation when appropriate, and the customer's explicit authorization.
+          </div>
+          <label class="mailing-consent"><input type="checkbox" id="demoMailApproval"> I understand this is a simulation and no letter will be mailed.</label>
+          <button class="button" type="button" id="demoMailPreview" disabled>Simulate mailing request</button>
+          <p class="dash-small">Pricing is not quoted in this demo. Actual USPS and provider charges will be shown before any future live purchase.</p>
+        </div>
+        <div class="mailing-summary">
+          <h4>Mailing preview</h4>
+          <div class="dash-detail"><span>Service</span><strong id="demoMailService">Standard USPS mail</strong></div>
+          <div class="dash-detail"><span>Recipient</span><strong>Example Agency</strong></div>
+          <div class="dash-detail"><span>Postage charge</span><strong>Not calculated</strong></div>
+          <div class="dash-detail"><span>Request status</span><strong id="demoMailStatus">Not submitted</strong></div>
+          <p class="dash-small" id="demoMailNotice" role="status" aria-live="polite">This demo cannot print, charge for, or send mail.</p>
+          <h4>Future tracking stages</h4>
+          <ol class="mailing-stages"><li>Draft reviewed</li><li>Customer approved</li><li>Accepted by mailing provider</li><li>Printed and mailed</li><li>Delivery update (when available)</li></ol>
+        </div>
+      </div>
+    </div>
   </div>
   <div class="dash-panel hidden" data-section="education">
     <div class="dashboard-panel"><h3>Credit Education</h3><p>Explore reliable resources to understand your credit reports and consumer rights.</p><div class="dash-resource-grid">
@@ -848,6 +895,30 @@ async function loadOwnerConsole() {
 el('ownerOpen').addEventListener('click',()=>{void loadOwnerConsole();});
 el('ownerRefresh').addEventListener('click',()=>{void loadOwnerConsole();});
 el('ownerBack').addEventListener('click',()=>{void showPortal();});
+
+// Mailing Center is intentionally client-side and simulation-only.
+// No mailing provider API, payment processing, document upload, or persistent data.
+const demoApproval=el('demoMailApproval');
+const demoPreview=el('demoMailPreview');
+document.querySelectorAll('input[name="demoMailType"]').forEach(input=>{
+  input.addEventListener('change',()=>{
+    const selected=document.querySelector('input[name="demoMailType"]:checked')?.value;
+    el('demoMailService').textContent=selected==='certified'?'Certified USPS mail':'Standard USPS mail';
+    el('demoMailStatus').textContent='Not submitted';
+    el('demoMailNotice').textContent='This demo cannot print, charge for, or send mail.';
+    demoApproval.checked=false;
+    demoPreview.disabled=true;
+  });
+});
+demoApproval.addEventListener('change',()=>{demoPreview.disabled=!demoApproval.checked;});
+demoPreview.addEventListener('click',()=>{
+  if(!demoApproval.checked)return;
+  const type=document.querySelector('input[name="demoMailType"]:checked')?.value;
+  el('demoMailStatus').textContent='Simulated request';
+  el('demoMailNotice').textContent='Simulation complete for '+(type==='certified'?'certified':'standard')+' mail. No data was transmitted, no payment was charged, and no letter was sent.';
+  demoApproval.checked=false;
+  demoPreview.disabled=true;
+});
 
 function activateDashboardPanel(name) {
   document.querySelectorAll('.dash-panel').forEach(panel => {
