@@ -158,14 +158,54 @@ section { padding:85px 0; }
 footer {
   background:#06162f;
   color:#b6c8e4;
-  padding:35px 0;
-  font-size:13px;
+  padding:60px 0 28px;
+  font-size:14px;
 }
-.foot {
+.footer-grid {
+  display:grid;
+  grid-template-columns:1.6fr repeat(3,1fr);
+  gap:36px;
+}
+.footer-brand { color:white;font-size:24px;font-weight:800; }
+.footer-brand span { color:#65b4ff; }
+.footer-about { line-height:1.75;max-width:310px; }
+.footer-heading {
+  color:#65b4ff;
+  text-transform:uppercase;
+  letter-spacing:2px;
+  font-size:13px;
+  margin:4px 0 20px;
+}
+.footer-links { display:flex;flex-direction:column;gap:16px; }
+.footer-links a, .footer-bottom a {
+  color:#b6c8e4;
+  text-decoration:none;
+}
+.footer-links a:hover, .footer-bottom a:hover {
+  color:white;
+  text-decoration:underline;
+}
+.footer-disclaimer {
+  margin-top:42px;
+  padding:24px 0;
+  border-top:1px solid #29405f;
+  border-bottom:1px solid #29405f;
+  font-size:13px;
+  line-height:1.75;
+}
+.footer-disclaimer strong { color:white; }
+.footer-bottom {
   display:flex;
   justify-content:space-between;
-  gap:25px;
+  gap:20px;
   flex-wrap:wrap;
+  margin-top:24px;
+  font-size:13px;
+}
+@media(max-width:720px) {
+  .footer-grid { grid-template-columns:repeat(2,minmax(0,1fr));gap:30px 20px; }
+  .footer-brand-column { grid-column:1 / -1; }
+  .footer-links a { overflow-wrap:anywhere; }
 }
 .portal {
   background:var(--bg);
@@ -596,14 +636,45 @@ footer {
 </section>
 
 <footer>
-  <div class="wrap foot">
-    <div>
-      © <span id="year"></span> CreditPilot AI LLC.
-      All rights reserved.
+  <div class="wrap">
+    <div class="footer-grid">
+      <div class="footer-brand-column">
+        <div class="footer-brand">CreditPilot <span>AI</span></div>
+        <p class="footer-about">Helping people understand credit information with clarity, transparency, and practical educational tools.</p>
+      </div>
+      <div>
+        <h3 class="footer-heading">Company</h3>
+        <nav class="footer-links" aria-label="Footer company links">
+          <a href="#about" data-home>About Us</a>
+          <a href="#features" data-home>Our Vision</a>
+          <a href="#contact" data-home>Contact Us</a>
+        </nav>
+      </div>
+      <div>
+        <h3 class="footer-heading">Resources</h3>
+        <nav class="footer-links" aria-label="Footer resource links">
+          <a href="#features" data-home>Credit Education</a>
+          <a href="#status" data-home>Product Updates</a>
+          <a href="#portal" id="footerPortalLink">Client Portal</a>
+        </nav>
+      </div>
+      <div>
+        <h3 class="footer-heading">Contact</h3>
+        <nav class="footer-links" aria-label="Footer contact links">
+          <a href="mailto:marc@mycreditpilotai.com">Marc — Business</a>
+          <a href="mailto:jennifer@mycreditpilotai.com">Jennifer — Business</a>
+          <a href="mailto:partners@mycreditpilotai.com">Partnerships</a>
+        </nav>
+      </div>
     </div>
-    <div>
-      Product in development · No credit repair
-      or monitoring services currently offered
+    <div class="footer-disclaimer">
+      <strong>Important Disclaimer</strong>
+      <p>CreditPilot AI LLC is developing educational technology for organizing and understanding credit information. Product features shown in development or demo previews are illustrative and may use fictional data. Credit report analysis, credit monitoring, dispute preparation, and automated mailing services are not currently offered. Do not submit Social Security numbers, credit reports, or sensitive financial documents through this development website.</p>
+      <p>Information provided is for general educational purposes only and is not legal, financial, or credit advice. No credit score improvement, account removal, or other result is promised or guaranteed. CreditPilot AI is not affiliated with or endorsed by any credit reporting agency.</p>
+    </div>
+    <div class="footer-bottom">
+      <div>© <span id="year"></span> CreditPilot AI LLC. All rights reserved.</div>
+      <div>Development preview · Services not yet available</div>
     </div>
   </div>
 </footer>
@@ -714,6 +785,10 @@ document.querySelectorAll('[data-home]').forEach(a =>
 );
 
 el('portalLink').addEventListener('click',() => {
+  void showPortal();
+});
+
+el('footerPortalLink').addEventListener('click',() => {
   void showPortal();
 });
 
