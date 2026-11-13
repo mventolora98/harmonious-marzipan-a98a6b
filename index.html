@@ -337,6 +337,12 @@ footer {
 .dash-detail span { color:var(--muted); }
 .dash-small { font-size:13px; }
 @media(max-width:720px) { .dash-resource-grid { grid-template-columns:1fr; } .dash-head { align-items:flex-start; } .dash-banner { padding:24px; } .dashboard-grid { grid-template-columns:1fr; } .dash-detail { flex-direction:column; } }
+.owner-actions { display:flex;gap:10px;flex-wrap:wrap; }
+.owner-table-wrap { overflow-x:auto;margin-top:20px; }
+.owner-table { width:100%;border-collapse:collapse;text-align:left;min-width:550px; }
+.owner-table th,.owner-table td { padding:15px 12px;border-bottom:1px solid #dbe6f5;font-size:14px; }
+.owner-table th { color:var(--navy);background:#f5f8fd; }
+.owner-table td { overflow-wrap:anywhere; }
 </style>
 </head>
 
@@ -608,7 +614,7 @@ footer {
   <div class="demo-tag">DEVELOPMENT DEMO — Credit analysis and dispute features are previews only. Do not upload credit reports, SSNs, or financial documents.</div>
   <div class="dash-head">
     <div><div class="eyebrow">Your workspace</div><h2>Welcome to CreditPilot AI</h2><p id="welcomeText">Your secure customer preview.</p></div>
-    <button class="button outline" id="signOutButton" type="button">Sign Out</button>
+    <div class="owner-actions"><button class="button outline hidden" id="ownerOpen" type="button">Owner Console</button><button class="button outline" id="signOutButton" type="button">Sign Out</button></div>
   </div>
   <nav class="dash-tabs" aria-label="Customer dashboard sections">
     <button type="button" class="dash-tab active" data-panel="overview" aria-current="page">Overview</button>
@@ -642,6 +648,20 @@ footer {
   <div class="dash-panel hidden" data-section="settings">
     <div class="dashboard-panel"><h3>Account Settings</h3><p>Your account is authenticated through Supabase. This preview does not store credit report data.</p><div class="dash-detail"><span>Email address</span><strong id="settingsEmail">—</strong></div><div class="dash-detail"><span>Email verification</span><strong id="settingsVerified">Verified</strong></div><button class="button outline" type="button" id="settingsReset">Send password reset email</button><p class="dash-small">We'll email a password-reset link to your verified account address.</p></div>
   </div>
+</div>
+
+<div class="dashboard hidden" id="ownerView">
+  <div class="demo-tag">OWNER CONSOLE — DEVELOPMENT ONLY. Credit services remain disabled.</div>
+  <div class="dash-head"><div><div class="eyebrow">Restricted workspace</div><h2>CreditPilot AI Owner Console</h2><p>Authorized owner access only. Customer details are limited to account metadata.</p></div><button type="button" class="button outline" id="ownerBack">Customer Dashboard</button></div>
+  <div class="dashboard-grid">
+    <div class="metric">Registered accounts<strong id="ownerTotal">—</strong><small>Verified owner query</small></div>
+    <div class="metric">Verified accounts<strong id="ownerVerified">—</strong><small>Confirmed email addresses</small></div>
+    <div class="metric">Owner accounts<strong id="ownerCount">—</strong><small>Privileged access</small></div>
+  </div>
+  <div class="dashboard-panel"><h3>Customer Directory</h3><p>Read-only preview. No passwords, credit reports, or dispute documents are accessible.</p>
+  <button class="button outline" id="ownerRefresh" type="button">Refresh customers</button>
+  <div class="owner-table-wrap"><table class="owner-table"><thead><tr><th>Account</th><th>Joined</th><th>Email status</th><th>Role</th></tr></thead><tbody id="ownerCustomers"><tr><td colspan="4">Loading authorized customer records…</td></tr></tbody></table></div>
+  <p class="dash-small">Directory is limited to the 250 most recently registered accounts. Administrative actions and audit logs are not yet enabled.</p></div>
 </div>
 
 <div id="message" class="status-message hidden"
@@ -711,7 +731,8 @@ const views = [
   'registerView',
   'resetView',
   'updatePasswordView',
-  'dashboardView'
+  'dashboardView',
+  'ownerView'
 ];
 
 const el = id => document.getElementById(id);
@@ -770,6 +791,64 @@ async function showPortal() {
   }
 }
 
+let ownerCheckSequence=0;
+async function checkOwnerAccess() {
+  const seq=++ownerCheckSequence;
+  el('ownerOpen').classList.add('hidden');
+  if (!supabase) return;
+  try {
+    const {data:{user},error:authError}=await supabase.auth.getUser();
+    if (authError || !user?.email_confirmed_at) return;
+    const {data,error}=await supabase.rpc('creditpilot_is_owner');
+    if (seq===ownerCheckSequence && !error && data===true)
+      el('ownerOpen').classList.remove('hidden');
+  } catch (_) { /* Fail closed when owner setup is absent. */ }
+}
+async function loadOwnerConsole() {
+  if (!supabase) return;
+  el('ownerCustomers').replaceChildren();
+  const loading=document.createElement('tr');
+  const cell=document.createElement('td');
+  cell.colSpan=4;cell.textContent='Checking permissions…';
+  loading.append(cell);el('ownerCustomers').append(loading);
+  const {data:{user},error:authError}=await supabase.auth.getUser();
+  if (authError || !user?.email_confirmed_at) { showLogin();return; }
+  const {data:allowed,error:permissionError}=await supabase.rpc('creditpilot_is_owner');
+  if (permissionError || allowed!==true) {
+    showView('dashboardView');
+    populateDashboard(user);
+    msg('Owner access is not enabled for this account.',true);
+    return;
+  }
+  const {data:customers,error}=await supabase.rpc('creditpilot_owner_customers');
+  if (error || !Array.isArray(customers)) {
+    el('ownerCustomers').replaceChildren();
+    const tr=document.createElement('tr'),td=document.createElement('td');
+    td.colSpan=4;td.textContent='Unable to load owner records. Check Supabase setup and permissions.';
+    tr.append(td);el('ownerCustomers').append(tr);
+    return;
+  }
+  showView('ownerView');
+  el('ownerTotal').textContent=String(customers.length);
+  el('ownerVerified').textContent=String(customers.filter(c=>c.email_verified).length);
+  el('ownerCount').textContent=String(customers.filter(c=>c.is_owner).length);
+  el('ownerCustomers').replaceChildren();
+  if (!customers.length) {
+    const tr=document.createElement('tr'),td=document.createElement('td');
+    td.colSpan=4;td.textContent='No customer accounts found.';
+    tr.append(td);el('ownerCustomers').append(tr);
+  }
+  customers.forEach(customer=>{
+    const tr=document.createElement('tr');
+    const values=[customer.email||'No email',customer.created_at?new Date(customer.created_at).toLocaleDateString():'—',customer.email_verified?'Verified':'Unverified',customer.is_owner?'Owner':'Customer'];
+    values.forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.append(td);});
+    el('ownerCustomers').append(tr);
+  });
+}
+el('ownerOpen').addEventListener('click',()=>{void loadOwnerConsole();});
+el('ownerRefresh').addEventListener('click',()=>{void loadOwnerConsole();});
+el('ownerBack').addEventListener('click',()=>{void showPortal();});
+
 function activateDashboardPanel(name) {
   document.querySelectorAll('.dash-panel').forEach(panel => {
     panel.classList.toggle('hidden',panel.dataset.section !== name);
@@ -786,6 +865,7 @@ function populateDashboard(user) {
   el('settingsEmail').textContent = user.email;
   el('settingsVerified').textContent = user.email_confirmed_at ? 'Verified' : 'Unverified';
   activateDashboardPanel('overview');
+  void checkOwnerAccess();
 }
 document.querySelectorAll('.dash-tab').forEach(tab =>
   tab.addEventListener('click',() => activateDashboardPanel(tab.dataset.panel))
@@ -940,6 +1020,8 @@ el('updatePasswordForm').addEventListener('submit',e => {
 });
 
 el('signOutButton').addEventListener('click',async() => {
+  ++ownerCheckSequence;
+  el('ownerOpen').classList.add('hidden');
   if (!supabase) return;
   const {error} = await supabase.auth.signOut();
   if (error) {
@@ -953,6 +1035,10 @@ if (supabase) {
   supabase.auth.onAuthStateChange(event => {
     if (event === 'PASSWORD_RECOVERY') {
       showView('updatePasswordView');
+    }
+    if (event === 'SIGNED_OUT') {
+      ++ownerCheckSequence;
+      el('ownerOpen').classList.add('hidden');
     }
     if (
       event === 'SIGNED_OUT' &&
