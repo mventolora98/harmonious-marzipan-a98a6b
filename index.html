@@ -631,6 +631,7 @@ footer {
     <button type="button" class="dash-tab active" data-panel="overview" aria-current="page">Overview</button>
     <button type="button" class="dash-tab" data-panel="reports">Credit Reports</button>
     <button type="button" class="dash-tab" data-panel="disputes">Dispute Center</button>
+    <button type="button" class="dash-tab" data-panel="documents">Document Center</button>
     <button type="button" class="dash-tab" data-panel="mailing">Mailing Center</button>
     <button type="button" class="dash-tab" data-panel="education">Credit Education</button>
     <button type="button" class="dash-tab" data-panel="settings">Account Settings</button>
@@ -672,6 +673,25 @@ footer {
 </div>
 <p class="dash-small">Production use will require verified facts, customer approval, appropriate legal review, secure document storage, and a permitted mailing integration. Disputing accurate information does not require its removal.</p>
 </div>
+  </div>
+  <div class="dash-panel hidden" data-section="documents">
+    <div class="dashboard-panel">
+      <span class="dash-pill">Fictional demo — Uploads disabled</span>
+      <h3>Document Center</h3>
+      <p>Organize identity verification, proof of address, and credit bureau responses for future customer-approved dispute packages. This preview does not accept or store real files.</p>
+      <div class="dash-empty" style="text-align:left"><strong>Privacy:</strong> Do not submit real driver's licenses, utility bills, bureau responses, or other personal information in this demo. Real uploads will be enabled only after private storage, per-customer authorization, file scanning, retention controls, and attachment approval are implemented.</div>
+      <div id="documentDemoCards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:18px 0"></div>
+      <h4>Prepare a fictional mailing package</h4>
+      <p class="dash-small">Choose which sample attachments would accompany an approved letter. Nothing is actually attached, uploaded, analyzed, or sent.</p>
+      <div id="documentDemoSelection" style="display:grid;gap:12px"></div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:16px">
+        <button class="button" type="button" id="documentDemoPrepare">Preview package</button>
+        <button class="button outline" type="button" id="documentDemoGoLetters">Go to Dispute Center</button>
+      </div>
+      <p id="documentDemoStatus" class="dash-small" role="status">No package prepared.</p>
+      <div class="dash-empty hidden" id="documentDemoPackage" style="text-align:left;white-space:pre-wrap"></div>
+      <p class="dash-small">Future bureau-response AI analysis will require customer authorization and a secure backend. Original identification documents should not be sent to an AI model merely to attach them to a mailing package.</p>
+    </div>
   </div>
   <div class="dash-panel hidden" data-section="mailing">
     <div class="dashboard-panel">
@@ -918,6 +938,38 @@ async function loadOwnerConsole() {
 el('ownerOpen').addEventListener('click',()=>{void loadOwnerConsole();});
 el('ownerRefresh').addEventListener('click',()=>{void loadOwnerConsole();});
 el('ownerBack').addEventListener('click',()=>{void showPortal();});
+
+// Document Center is a visual simulation only. No file input, uploads,
+// document contents, browser storage, database writes, or external requests.
+const demoDocuments=[
+ {id:'id',title:"Driver's License / State ID",purpose:'Identity verification',example:'Fictional identity document',detail:'Attach only when needed and expressly approved. Never share an ID with AI merely for attachment.'},
+ {id:'utility',title:'Utility Bill',purpose:'Proof of mailing address',example:'Fictional utility statement',detail:'Check recipient requirements and minimize unnecessary personal information.'},
+ {id:'response',title:'Credit Bureau Response',purpose:'Investigation results / follow-up',example:'Fictional bureau response',detail:'Future AI review can summarize results with customer authorization and secure processing.'}
+];
+const demoDocChoices=new Set();
+demoDocuments.forEach(doc=>{
+ const card=document.createElement('div');card.className='card';card.style.padding='18px';
+ const title=document.createElement('h4');title.textContent=doc.title;title.style.margin='0 0 8px';
+ const purpose=document.createElement('p');purpose.textContent=doc.purpose;purpose.style.margin='0 0 8px';
+ const detail=document.createElement('small');detail.textContent=doc.detail;detail.style.color='#536580';
+ const status=document.createElement('p');status.textContent='Demo placeholder — real uploads unavailable';status.className='dash-small';
+ card.append(title,purpose,detail,status);el('documentDemoCards').append(card);
+ const label=document.createElement('label');label.style.cssText='display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid #dbe6f5;border-radius:9px';
+ const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.setAttribute('aria-label','Include '+doc.example);checkbox.addEventListener('change',()=>{if(checkbox.checked)demoDocChoices.add(doc.id);else demoDocChoices.delete(doc.id);el('documentDemoPackage').classList.add('hidden');el('documentDemoStatus').textContent='Selection changed. Preview again to update the fictional package.';});
+ const span=document.createElement('span');span.textContent=doc.example+' (sample only)';
+ label.append(checkbox,span);el('documentDemoSelection').append(label);
+});
+el('documentDemoPrepare').addEventListener('click',()=>{
+ const chosen=demoDocuments.filter(doc=>demoDocChoices.has(doc.id));
+ const lines=['FICTIONAL DISPUTE PACKAGE PREVIEW','', 'Letter: customer-approved bureau dispute letter (not attached in this demo)',''];
+ if(chosen.length)chosen.forEach((doc,i)=>lines.push((i+1)+'. '+doc.example+' — '+doc.purpose));
+ else lines.push('No sample supporting documents selected.');
+ lines.push('','Nothing uploaded, attached, mailed, or sent to AI. Future live workflows require customer review and explicit attachment approval.');
+ el('documentDemoPackage').textContent=lines.join('\n');
+ el('documentDemoPackage').classList.remove('hidden');
+ el('documentDemoStatus').textContent='Fictional package preview ready ('+chosen.length+' sample attachment'+(chosen.length===1?'':'s')+').';
+});
+el('documentDemoGoLetters').addEventListener('click',()=>activateDashboardPanel('disputes'));
 
 // Advanced letter builder: fictional, in-memory demonstration only.
 const fictionalDisputes=[
