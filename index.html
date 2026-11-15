@@ -648,7 +648,30 @@ footer {
     <div class="dashboard-panel"><span class="dash-pill">Demo only</span><h3>Credit Report Center</h3><p>Future tools may help organize reports from Equifax, Experian, and TransUnion and flag details for manual review.</p><div class="dash-empty">No reports connected. Report upload and analysis are disabled in this preview.</div><a href="https://www.annualcreditreport.com/" target="_blank" rel="noopener noreferrer">Visit AnnualCreditReport.com ↗</a></div>
   </div>
   <div class="dash-panel hidden" data-section="disputes">
-    <div class="dashboard-panel"><span class="dash-pill">Demo only</span><h3>Dispute Center</h3><p>This is a preview of future dispute organization and correspondence tracking. No disputes can be created, transmitted, or filed here.</p><div class="dash-empty">No dispute cases. Letter generation and submission are not available.</div><p>Only information you believe is inaccurate or incomplete should be disputed. No deletion or score improvement is guaranteed.</p></div>
+    <div class="dashboard-panel">
+<span class="dash-pill">Fictional demo — No real disputes or mailing</span>
+<h3>Advanced FCRA Dispute Letter Builder</h3>
+<p>Select fictional reporting errors below. CreditPilot AI will group selected items into one comprehensive, editable letter per credit bureau. All accounts, amounts, dates and evidence below are invented for demonstration.</p>
+<div class="dash-empty" style="text-align:left"><strong>Important:</strong> FCRA provisions guide the investigation request. Metro 2 is an industry reporting standard, not itself a federal law. This demo does not verify Metro 2 compliance, determine violations, access actual credit reports, or provide legal advice.</div>
+<div id="letterDemoAccounts" style="display:grid;gap:12px;margin:18px 0"></div>
+<div style="display:flex;flex-wrap:wrap;gap:10px;margin:14px 0">
+<button type="button" class="button" id="letterDemoGenerate">Draft letters by bureau</button>
+<button type="button" class="button outline" id="letterDemoClear">Clear selection</button>
+</div>
+<p class="dash-small" id="letterDemoStatus" role="status">Select one or more fictional accounts to begin.</p>
+<div id="letterDemoOutput" class="hidden">
+<label for="letterDemoBureau"><strong>Review letter for:</strong></label>
+<select id="letterDemoBureau" style="display:block;width:100%;max-width:360px;padding:12px;margin:10px 0;border:1px solid #ccd8e9;border-radius:8px"></select>
+<label for="letterDemoEditor"><strong>Editable draft (fictional data only)</strong></label>
+<textarea id="letterDemoEditor" rows="22" spellcheck="true" style="width:100%;padding:16px;border:1px solid #ccd8e9;border-radius:10px;line-height:1.6;font-family:Arial,sans-serif;margin-top:8px"></textarea>
+<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:12px">
+<button type="button" class="button" id="letterDemoPrint">Print / Save as PDF</button>
+<button type="button" class="button outline" id="letterDemoMail">View Mailing Center</button>
+</div>
+<p class="dash-small">Use your browser's Print → Save as PDF. Drafts are held only in this page and are not saved to Supabase or sent anywhere. Printing is a local browser action.</p>
+</div>
+<p class="dash-small">Production use will require verified facts, customer approval, appropriate legal review, secure document storage, and a permitted mailing integration. Disputing accurate information does not require its removal.</p>
+</div>
   </div>
   <div class="dash-panel hidden" data-section="mailing">
     <div class="dashboard-panel">
@@ -895,6 +918,90 @@ async function loadOwnerConsole() {
 el('ownerOpen').addEventListener('click',()=>{void loadOwnerConsole();});
 el('ownerRefresh').addEventListener('click',()=>{void loadOwnerConsole();});
 el('ownerBack').addEventListener('click',()=>{void showPortal();});
+
+// Advanced letter builder: fictional, in-memory demonstration only.
+const fictionalDisputes=[
+ {id:'ex1',bureau:'Experian',creditor:'Example Bank',account:'XXXX-1042',issue:'Balance discrepancy',reported:'$2,450 balance on sample report dated November 1, 2026',evidence:'Fictional statement dated October 28, 2026 shows $1,250; intervening activity and reporting cutoff require verification',request:'Verify the balance as of the reporting date and correct it if inaccurate or incomplete.',metro:'Potential balance / reporting-date consistency question; no Metro 2 field-level determination.'},
+ {id:'ex2',bureau:'Experian',creditor:'Sample Card Co.',account:'XXXX-2077',issue:'Potential incorrect late payment',reported:'30 days late for September 2026',evidence:'Fictional payment receipt shows payment submitted before the contractual due date; posting and grace-period terms require review',request:'Investigate payment dates and contractual terms, then correct the payment history if inaccurate.',metro:'Potential payment-history / payment-rating consistency question; no violation established.'},
+ {id:'tu1',bureau:'TransUnion',creditor:'Demo Collections',account:'XXXX-3091',issue:'Potential duplicate tradeline',reported:'Two entries that appear to describe the same collection obligation',evidence:'Fictional entries show matching original creditor and amount; whether these represent distinct permissible reporting requires investigation',request:'Determine whether the entries are accurate and complete; correct or remove any duplicate or unverifiable information as appropriate.',metro:'Potential account-identity and status consistency question; not proof of improper Metro 2 reporting.'},
+ {id:'eq1',bureau:'Equifax',creditor:'Example Finance',account:'XXXX-4055',issue:'Account status discrepancy',reported:'Account shown as open on a fictional November 2026 report',evidence:'Fictional closure confirmation dated August 2026; investigate reporting effective date',request:'Verify the status and relevant dates and correct any inaccurate status.',metro:'Potential account-status and date consistency question; no field-level validation.'},
+ {id:'eq2',bureau:'Equifax',creditor:'Sample Auto',account:'XXXX-5088',issue:'Payment history discrepancy',reported:'A late-payment marker for July 2026',evidence:'Fictional payment ledger shows a timely payment; payment application and reporting period need verification',request:'Review the payment ledger and correct any inaccurate payment-history marker.',metro:'Potential payment-history-profile consistency question; no violation established.'}
+];
+const demoSelected=new Set(fictionalDisputes.map(x=>x.id));
+const demoDrafts=new Map();
+const demoAccounts=el('letterDemoAccounts');
+fictionalDisputes.forEach(item=>{
+ const label=document.createElement('label');
+ label.style.cssText='display:flex;align-items:flex-start;gap:12px;padding:14px;border:1px solid #dbe6f5;border-radius:10px;cursor:pointer';
+ const check=document.createElement('input');check.type='checkbox';check.checked=true;check.style.marginTop='4px';
+ check.addEventListener('change',()=>{if(check.checked)demoSelected.add(item.id);else demoSelected.delete(item.id);el('letterDemoStatus').textContent=demoSelected.size+' fictional account(s) selected. Generate again to refresh letters.';});
+ const info=document.createElement('span');const strong=document.createElement('strong');strong.textContent=item.creditor+' — '+item.issue;
+ const details=document.createElement('small');details.style.cssText='display:block;margin-top:5px;color:#536580';details.textContent=item.bureau+' · '+item.account+' · Fictional example';
+ info.append(strong,details);label.append(check,info);demoAccounts.append(label);
+});
+function composeDemoLetter(bureau,items){
+ const lines=[
+ 'DEMONSTRATION ONLY — FICTIONAL DATA — NOT FOR MAILING','',
+ 'Demo Customer','123 Fictional Lane','Example City, NC 00000','',
+ 'Date: November 14, 2026','To: '+bureau+' — Consumer Dispute Department','',
+ 'Subject: Request for Reinvestigation of Multiple Disputed Credit Report Entries',
+ '',
+ 'Dear '+bureau+' Dispute Department:',
+ '',
+ 'I am writing to dispute the accuracy or completeness of the specific items identified below in my fictional consumer report. Under 15 U.S.C. § 1681i(a), I request a reasonable reinvestigation of each identified item and consideration of the supporting information described. Please forward relevant dispute information to the appropriate furnisher(s), as applicable.',
+ '',
+ 'DISPUTED ITEMS ('+items.length+')',''
+ ];
+ items.forEach((x,i)=>lines.push(
+ (i+1)+'. '+x.creditor+' — '+x.account,
+ 'Disputed issue: '+x.issue,
+ 'Information appearing on report: '+x.reported+'.',
+ 'Basis and available evidence: '+x.evidence+'.',
+ 'Requested action: '+x.request,
+ 'Reporting consistency observation: '+x.metro,
+ ''
+ ));
+ lines.push(
+ 'REQUESTED INVESTIGATION AND RESULTS','',
+ 'Please investigate each item separately, consider the described supporting evidence, and correct or delete information where required by the results of the investigation and applicable law. If an item is verified as accurate and complete, please explain the investigation outcome as required by law. Please provide the written results and any revised consumer report to which I am entitled under 15 U.S.C. § 1681i.',
+ '',
+ 'The reporting consistency observations above are questions for review, not established violations of the Metro 2 reporting standard or the FCRA. No proprietary Metro 2 specification or underlying reporting file has been examined in this demonstration.',
+ '',
+ 'Attachments (fictional; not actually attached): sample report excerpts and account-specific supporting documents.',
+ '',
+ 'Sincerely,','Demo Customer','',
+ 'DEMO ONLY — NOT FOR SUBMISSION OR MAILING'
+ );
+ return lines.join('\n');
+}
+function showDemoDraft(){
+ const bureau=el('letterDemoBureau').value;
+ el('letterDemoEditor').value=demoDrafts.get(bureau)||'';
+}
+el('letterDemoGenerate').addEventListener('click',()=>{
+ demoDrafts.clear();
+ const byBureau=new Map();
+ fictionalDisputes.filter(x=>demoSelected.has(x.id)).forEach(x=>{if(!byBureau.has(x.bureau))byBureau.set(x.bureau,[]);byBureau.get(x.bureau).push(x);});
+ const select=el('letterDemoBureau');select.replaceChildren();
+ byBureau.forEach((items,bureau)=>{demoDrafts.set(bureau,composeDemoLetter(bureau,items));const option=document.createElement('option');option.value=bureau;option.textContent=bureau+' ('+items.length+' item'+(items.length===1?'':'s')+')';select.append(option);});
+ el('letterDemoOutput').classList.toggle('hidden',byBureau.size===0);
+ el('letterDemoStatus').textContent=byBureau.size?byBureau.size+' fictional bureau letter(s) drafted. Review and edit before printing.':'Select at least one fictional account.';
+ if(byBureau.size)showDemoDraft();
+});
+el('letterDemoBureau').addEventListener('change',showDemoDraft);
+el('letterDemoEditor').addEventListener('input',()=>{demoDrafts.set(el('letterDemoBureau').value,el('letterDemoEditor').value);});
+el('letterDemoClear').addEventListener('click',()=>{demoSelected.clear();demoAccounts.querySelectorAll('input').forEach(x=>x.checked=false);demoDrafts.clear();el('letterDemoOutput').classList.add('hidden');el('letterDemoStatus').textContent='No fictional accounts selected.';});
+el('letterDemoPrint').addEventListener('click',()=>{
+ const letter=el('letterDemoEditor').value;
+ if(!letter)return;
+ const popup=window.open('','_blank','width=850,height=900');
+ if(!popup){el('letterDemoStatus').textContent='Pop-up blocked. Allow pop-ups to print this fictional draft.';return;}
+ const pre=popup.document.createElement('pre');pre.textContent=letter;pre.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;font:12pt/1.6 Georgia,serif;margin:0';
+ const style=popup.document.createElement('style');style.textContent='@page{margin:0.8in}body{padding:0;margin:0}';
+ popup.document.head.append(style);popup.document.body.append(pre);popup.document.title='CreditPilot AI — Fictional Dispute Draft';
+ popup.focus();popup.print();
+});
+el('letterDemoMail').addEventListener('click',()=>{activateDashboardPanel('mailing');el('demoMailNotice').textContent='Letter drafts are not transferred to mailing. This Mailing Center is simulation-only; no mail is sent.';});
 
 // Mailing Center is intentionally client-side and simulation-only.
 // No mailing provider API, payment processing, document upload, or persistent data.
