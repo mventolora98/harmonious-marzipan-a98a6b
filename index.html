@@ -713,6 +713,13 @@ footer {
           </div>
           <label class="mailing-consent"><input type="checkbox" id="demoMailApproval"> I understand this is a simulation and no letter will be mailed.</label>
           <button class="button" type="button" id="demoMailPreview" disabled>Simulate mailing request</button>
+          <div class="dashboard-panel" id="lobTestPanel" style="margin-top:22px">
+            <span class="dash-pill">Lob sandbox · owner-only</span>
+            <h4>Test Lob connection</h4>
+            <p class="dash-small">Creates a fictional test letter using fixed example names and addresses. This does not use your editable dispute draft or any customer data. Lob test mode never sends physical mail.</p>
+            <button class="button outline" type="button" id="lobTestButton" disabled>Submit fictional Lob test</button>
+            <p class="dash-small" id="lobTestResult" role="status" aria-live="polite">Sign in with a verified owner account to enable testing.</p>
+          </div>
           <p class="dash-small">Pricing is not quoted in this demo. Actual USPS and provider charges will be shown before any future live purchase.</p>
         </div>
         <div class="mailing-summary">
@@ -873,6 +880,7 @@ async function showPortal() {
   if (!error && data.user && data.user.email_confirmed_at) {
     showView('dashboardView');
     populateDashboard(data.user);
+    void refreshLobTestAccess();
   } else {
     showLogin();
     if (data?.user && !data.user.email_confirmed_at) {
@@ -935,6 +943,42 @@ async function loadOwnerConsole() {
     el('ownerCustomers').append(tr);
   });
 }
+// Lob sandbox test is restricted to verified owners; server rechecks authorization.
+async function refreshLobTestAccess() {
+  const btn=el('lobTestButton');
+  if (!btn) return;
+  btn.disabled=true;
+  if (!supabase) return;
+  try {
+    const {data:{user}}=await supabase.auth.getUser();
+    if (!user?.email_confirmed_at) return;
+    const {data:allowed,error}=await supabase.rpc('creditpilot_is_owner');
+    btn.disabled=Boolean(error || allowed!==true);
+    el('lobTestResult').textContent=btn.disabled
+      ? 'Owner testing is not enabled. Complete the Supabase owner setup first.'
+      : 'Owner verified. Test uses fictional data only.';
+  } catch (_) { btn.disabled=true; }
+}
+el('lobTestButton').addEventListener('click',async()=>{
+  const btn=el('lobTestButton');
+  btn.disabled=true;
+  const output=el('lobTestResult');
+  output.textContent='Contacting Lob test environment…';
+  try {
+    const {data:{session},error}=await supabase.auth.getSession();
+    if (error || !session?.access_token) throw new Error('Please sign in again.');
+    const mailType=document.querySelector('input[name="demoMailType"]:checked')?.value || 'standard';
+    const res=await fetch('/.netlify/functions/lob-test',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},
+      body:JSON.stringify({confirm:'FICTIONAL_TEST_ONLY',mailType})
+    });
+    const data=await res.json();
+    if (!res.ok) throw new Error(data.error+(data.detail?' '+data.detail:''));
+    output.textContent='Lob test accepted: '+data.id+'. No physical mail sent.';
+  } catch(e) { output.textContent='Test not completed: '+e.message; }
+  await refreshLobTestAccess();
+});
 el('ownerOpen').addEventListener('click',()=>{void loadOwnerConsole();});
 el('ownerRefresh').addEventListener('click',()=>{void loadOwnerConsole();});
 el('ownerBack').addEventListener('click',()=>{void showPortal();});
