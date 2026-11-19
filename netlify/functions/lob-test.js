@@ -37,7 +37,25 @@ exports.handler = async (event) => {
     if (!ownerRes.ok || (await ownerRes.json()) !== true)
       return reply(403, { error: "Owner-only testing is not enabled for this account." });
     const body = JSON.parse(event.body || "{}");
-    if (body.confirm !== "FICTIONAL_TEST_ONLY" || !["standard","certified"].includes(body.mailType))
+    if (body.confirm !== "FICTIONAL_TEST_ONLY")
+      return reply(400, { error: "Invalid fictional test request." });
+    if (body.action === "status") {
+      if (typeof body.id !== "string" || !/^ltr_[a-zA-Z0-9]{8,64}$/.test(body.id))
+        return reply(400, { error: "Invalid test letter ID." });
+      const statusRes = await fetch("https://api.lob.com/v1/letters/" + encodeURIComponent(body.id), {
+        headers: { Authorization: "Basic " + Buffer.from(key + ":").toString("base64") },
+        signal: AbortSignal.timeout(12000)
+      });
+      const statusData = await statusRes.json().catch(() => ({}));
+      if (!statusRes.ok)
+        return reply(502, { error: "Unable to retrieve Lob sandbox status.", detail: statusData.error?.message || "Check test letter ID." });
+      return reply(200, { mode: "test", id: statusData.id, status: statusData.status || "unknown",
+        created_at: statusData.date_created || null, send_date: statusData.send_date || null,
+        mail_type: statusData.mail_type || null, tracking_events: Array.isArray(statusData.tracking_events)
+          ? statusData.tracking_events.slice(0,10).map(x => ({ type: x.type || null, time: x.time || null })) : [],
+        message: "Sandbox status only. No physical mail sent." });
+    }
+    if (!["standard","certified"].includes(body.mailType))
       return reply(400, { error: "Invalid fictional test request." });
     const payload = new URLSearchParams();
     const letter = { ...sample, ...(body.mailType === "certified" ? { mail_type: "usps_first_class", extra_service: "certified" } : { mail_type: "usps_first_class" }) };
