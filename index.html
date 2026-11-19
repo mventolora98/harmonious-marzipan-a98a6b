@@ -974,7 +974,7 @@ el('lobTestButton').addEventListener('click',async()=>{
       body:JSON.stringify({confirm:'FICTIONAL_TEST_ONLY',mailType})
     });
     const data=await res.json();
-    if (!res.ok) throw new Error(data.error+(data.detail?' '+data.detail:''));
+    if (!res.ok) throw new Error(data.error+(data.detail?' '+data.detail:'')+(data.diagnostic?' [Netlify context: '+data.diagnostic.context+'; branch: '+data.diagnostic.branch+']':''));
     output.textContent='Lob test accepted: '+data.id+'. No physical mail sent.';
   } catch(e) { output.textContent='Test not completed: '+e.message; }
   await refreshLobTestAccess();
