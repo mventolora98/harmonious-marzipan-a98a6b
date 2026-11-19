@@ -4,6 +4,7 @@ const headers = { "Content-Type": "application/json", "Cache-Control": "no-store
 const reply = (statusCode, data) => ({ statusCode, headers, body: JSON.stringify(data) });
 const sample = {
   description: "CreditPilot AI fictional dispute letter — TEST ONLY",
+  use_type: "operational",
   to: { name: "Example Credit Bureau", address_line1: "210 King Street", address_city: "San Francisco", address_state: "CA", address_zip: "94107", address_country: "US" },
   from: { name: "CreditPilot AI Demo", address_line1: "210 King Street", address_city: "San Francisco", address_state: "CA", address_zip: "94107", address_country: "US" },
   file: "<html><body style='font-family:Arial;padding:40px'><h1>FICTIONAL DEMO — NOT A REAL DISPUTE</h1><p>Example Customer</p><p>Dear Example Credit Bureau,</p><p>This is a fictional test of the CreditPilot AI mailing integration. No consumer account or dispute information is included.</p><p>Sincerely,<br>Example Customer</p></body></html>",
