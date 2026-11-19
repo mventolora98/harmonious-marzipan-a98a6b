@@ -719,6 +719,14 @@ footer {
             <p class="dash-small">Creates a fictional test letter using fixed example names and addresses. This does not use your editable dispute draft or any customer data. Lob test mode never sends physical mail.</p>
             <button class="button outline" type="button" id="lobTestButton" disabled>Submit fictional Lob test</button>
             <p class="dash-small" id="lobTestResult" role="status" aria-live="polite">Sign in with a verified owner account to enable testing.</p>
+            <div id="lobTrackingPanel" style="margin-top:16px;padding:14px;border:1px solid #dbe6f5;border-radius:10px">
+              <h4 style="margin:0 0 8px">Sandbox letter tracking</h4>
+              <p class="dash-small">Look up a fictional Lob test letter. Status is read directly from Lob; this is not real USPS tracking.</p>
+              <label for="lobTrackingId" class="dash-small">Lob test letter ID</label>
+              <input id="lobTrackingId" type="text" placeholder="ltr_..." autocomplete="off" maxlength="68" style="width:100%;padding:10px;margin:8px 0;border:1px solid #dbe6f5;border-radius:8px">
+              <button class="button outline" type="button" id="lobTrackingButton">Check sandbox status</button>
+              <p class="dash-small" id="lobTrackingResult" role="status" aria-live="polite">No letter checked yet.</p>
+            </div>
           </div>
           <p class="dash-small">Pricing is not quoted in this demo. Actual USPS and provider charges will be shown before any future live purchase.</p>
         </div>
@@ -976,8 +984,32 @@ el('lobTestButton').addEventListener('click',async()=>{
     const data=await res.json();
     if (!res.ok) throw new Error(data.error+(data.detail?' '+data.detail:'')+(data.diagnostic?' [Netlify context: '+data.diagnostic.context+'; branch: '+data.diagnostic.branch+']':''));
     output.textContent='Lob test accepted: '+data.id+'. No physical mail sent.';
+    el('lobTrackingId').value=data.id || '';
   } catch(e) { output.textContent='Test not completed: '+e.message; }
   // Keep the outcome visible; refreshing owner access here overwrites the error within seconds.
+  btn.disabled=false;
+});
+el('lobTrackingButton').addEventListener('click',async()=>{
+  const btn=el('lobTrackingButton'),output=el('lobTrackingResult');
+  btn.disabled=true;output.textContent='Checking Lob sandbox…';
+  try {
+    const id=el('lobTrackingId').value.trim();
+    if (!/^ltr_[a-zA-Z0-9]{8,64}$/.test(id)) throw new Error('Enter a valid Lob test letter ID.');
+    const {data:{session},error}=await supabase.auth.getSession();
+    if(error || !session?.access_token) throw new Error('Please sign in again.');
+    const res=await fetch('/.netlify/functions/lob-test',{
+      method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},
+      body:JSON.stringify({confirm:'FICTIONAL_TEST_ONLY',action:'status',id})
+    });
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error+(data.detail?' '+data.detail:''));
+    const fields=['ID: '+data.id,'Lob status: '+data.status,
+      'Created: '+(data.created_at?new Date(data.created_at).toLocaleString():'Not provided'),
+      'Send date: '+(data.send_date?new Date(data.send_date).toLocaleString():'Not provided'),
+      'Mail type: '+(data.mail_type||'Not provided'),
+      'Tracking events: '+(data.tracking_events?.length||0),'Sandbox only — no physical mail sent.'];
+    output.textContent=fields.join(' | ');
+  }catch(e){output.textContent='Status lookup failed: '+e.message;}
   btn.disabled=false;
 });
 el('ownerOpen').addEventListener('click',()=>{void loadOwnerConsole();});
