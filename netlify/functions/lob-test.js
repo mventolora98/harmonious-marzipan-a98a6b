@@ -12,8 +12,12 @@ const sample = {
 };
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") return reply(405, { error: "Method not allowed" });
-  if (process.env.CONTEXT !== "branch-deploy" || process.env.BRANCH !== "development")
-    return reply(403, { error: "Test integration only runs on the development branch deploy.", diagnostic: { context: process.env.CONTEXT || "unset", branch: process.env.BRANCH || "unset" } });
+  // Netlify build-time CONTEXT/BRANCH may be unavailable in function runtime.
+  // Restrict sandbox testing to the exact development branch hostname.
+  const host = String(event.headers.host || event.headers.Host || "").toLowerCase().split(":")[0];
+  const developmentHost = "development--harmonious-marzipan-a98a6b.netlify.app";
+  if (host !== developmentHost)
+    return reply(403, { error: "Open the development branch URL (not a deploy permalink) to run this sandbox test.", diagnostic: { host: host || "unset" } });
   const key = process.env.LOB_TEST_API_KEY;
   if (!key || !key.startsWith("test_")) return reply(503, { error: "Valid Lob test credentials are not configured." });
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY)
