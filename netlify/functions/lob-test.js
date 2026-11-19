@@ -13,7 +13,7 @@ const sample = {
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") return reply(405, { error: "Method not allowed" });
   if (process.env.CONTEXT !== "branch-deploy" || process.env.BRANCH !== "development")
-    return reply(403, { error: "Test integration only runs on the development branch deploy." });
+    return reply(403, { error: "Test integration only runs on the development branch deploy.", diagnostic: { context: process.env.CONTEXT || "unset", branch: process.env.BRANCH || "unset" } });
   const key = process.env.LOB_TEST_API_KEY;
   if (!key || !key.startsWith("test_")) return reply(503, { error: "Valid Lob test credentials are not configured." });
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY)
