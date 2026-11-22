@@ -571,7 +571,30 @@ footer {
       <input id="registerPassword" type="password"
         autocomplete="new-password" minlength="12" required>
     </div>
-    <button class="button full" type="submit">
+    <div class="field" style="margin:18px 0">
+      <h3>Review the development agreements</h3>
+      <p><a href="./terms.html" target="_blank" rel="noopener">Full Terms of Use</a> · <a href="./privacy.html" target="_blank" rel="noopener">Full Privacy Policy</a></p>
+      <p class="dash-small">Scroll each document to its end to unlock the acceptance checkbox. Draft policies for the development preview only.</p>
+      <label for="termsScroll">Terms of Use (draft)</label>
+      <div id="termsScroll" tabindex="0" role="region" aria-label="Scroll through Terms of Use" style="height:170px;overflow-y:auto;border:1px solid #dbe6f5;border-radius:9px;padding:12px;margin:8px 0 16px">
+        <strong>Development Terms · November 22, 2026</strong>
+        <p>CreditPilot AI LLC offers a development preview of credit education and fictional dispute workflows, not paid credit repair services. Users must be at least 18, provide accurate account information, protect their credentials, and refrain from uploading real credit reports, IDs, SSNs, or other sensitive financial information.</p>
+        <p>AI and educational content may contain errors and does not constitute individualized legal or financial advice. No credit-score improvements or removals are guaranteed. No actual disputes or physical mail are sent through this preview.</p>
+        <p>Do not impersonate others or misuse the service. Preview features may change or be unavailable. Nothing limits non-waivable statutory rights or lawful remedies. Future paid credit services require separate disclosures, agreements and authorizations.</p>
+        <p><strong>End of development Terms summary.</strong> Read the full linked Terms of Use for all sections.</p>
+      </div>
+      <label for="privacyScroll">Privacy Policy (draft)</label>
+      <div id="privacyScroll" tabindex="0" role="region" aria-label="Scroll through Privacy Policy" style="height:170px;overflow-y:auto;border:1px solid #dbe6f5;border-radius:9px;padding:12px;margin:8px 0 16px">
+        <strong>Development Privacy Policy · November 22, 2026</strong>
+        <p>We collect registration email addresses, authentication identifiers and verification details to operate and secure the preview. Netlify hosts the website and functions; Supabase supports authentication; owner-only Lob tests use fictional information.</p>
+        <p>Hosting and authentication providers may process technical request logs. Do not submit real credit or financial documents. We do not intend to sell preview account information. Contact support@mycreditpilotai.com for access, correction or deletion requests, subject to verification and applicable exceptions.</p>
+        <p>We use service-provider safeguards but cannot guarantee absolute security. Retention details require review. The preview is not intended for minors under 18. Policy changes may be communicated as required.</p>
+        <p><strong>End of development Privacy summary.</strong> Read the full linked Privacy Policy for all sections.</p>
+      </div>
+      <label style="display:flex;gap:9px;align-items:flex-start"><input id="registerAgreement" type="checkbox" required disabled style="width:auto;margin-top:3px"><span>I agree to the <a href="./terms.html" target="_blank" rel="noopener">Terms of Use</a> and acknowledge the <a href="./privacy.html" target="_blank" rel="noopener">Privacy Policy</a> (development drafts, version dev-2026-11-22).</span></label>
+      <p id="agreementProgress" class="dash-small" role="status">Scroll through both agreements to enable acceptance.</p>
+    </div>
+    <button class="button full" type="submit" id="registerSubmit" disabled>
       Create Account
     </button>
   </form>
@@ -1264,22 +1287,44 @@ el('loginForm').addEventListener('submit',e => {
   });
 });
 
+const agreementState={terms:false,privacy:false};
+function refreshAgreement(){
+  const ready=agreementState.terms && agreementState.privacy;
+  const checkbox=el('registerAgreement');
+  checkbox.disabled=!ready;
+  if(!ready) checkbox.checked=false;
+  el('registerSubmit').disabled=!(ready && checkbox.checked);
+  el('agreementProgress').textContent=ready?'Both documents reviewed to the end. Check the box to continue.':
+    'Scroll to the end of '+[!agreementState.terms?'Terms':'',!agreementState.privacy?'Privacy':''].filter(Boolean).join(' and ')+'.';
+}
+for(const [id,key] of [['termsScroll','terms'],['privacyScroll','privacy']]){
+  el(id).addEventListener('scroll',()=>{
+    const box=el(id);
+    if(box.scrollTop+box.clientHeight>=box.scrollHeight-4){agreementState[key]=true;refreshAgreement();}
+  });
+}
+el('registerAgreement').addEventListener('change',refreshAgreement);
+refreshAgreement();
 el('registerForm').addEventListener('submit',e => {
   e.preventDefault();
   void handle('registerForm',async() => {
     if (!supabase) {
       throw Error('Supabase is not configured.');
     }
+    if (!agreementState.terms || !agreementState.privacy || !el('registerAgreement').checked) throw Error('Review and accept the development agreements first.');
     const {error} = await supabase.auth.signUp({
       email:el('registerEmail').value.trim(),
       password:el('registerPassword').value,
       options:{
+        data:{agreement_version:'dev-2026-11-22',agreement_accepted_at:new Date().toISOString(),privacy_acknowledged:true},
         emailRedirectTo:
           location.origin + location.pathname + '#portal'
       }
     });
     if (error) throw error;
     el('registerForm').reset();
+    agreementState.terms=false;agreementState.privacy=false;
+    el('termsScroll').scrollTop=0;el('privacyScroll').scrollTop=0;refreshAgreement();
     showView('loginView');
     msg(
       'If registration was accepted, check your email ' +
