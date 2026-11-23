@@ -657,7 +657,7 @@ footer {
     <button type="button" class="dash-tab" data-panel="documents">Document Center</button>
     <button type="button" class="dash-tab" data-panel="mailing">Mailing Center</button>
     <button type="button" class="dash-tab" data-panel="education">Credit Education</button>
-    <button type="button" class="dash-tab" data-panel="settings">Account Settings</button>
+    <button type="button" class="dash-tab" data-panel="settings">Account Settings</button><button class="dash-tab" type="button" data-panel="beta">Beta Feedback</button>
   </nav>
   <div class="dash-panel" data-section="overview">
     <div class="dash-banner"><span class="dash-pill">Preview account</span><h3>Your credit journey starts with understanding.</h3><p>Explore educational resources and see how future CreditPilot AI tools will be organized.</p></div>
@@ -772,6 +772,22 @@ footer {
       <a href="https://www.annualcreditreport.com/" target="_blank" rel="noopener noreferrer"><strong>Get your credit reports</strong><span>Access the federally authorized report website ↗</span></a>
       <a href="https://www.consumerfinance.gov/consumer-tools/credit-reports-and-scores/answers/key-terms/credit-report/" target="_blank" rel="noopener noreferrer"><strong>What is a credit report?</strong><span>Review essential reporting concepts ↗</span></a>
     </div></div>
+  </div>
+  <div class="dash-panel hidden" data-section="beta">
+    <div class="dashboard-panel">
+      <h3>Beta Testing Hub</h3>
+      <p><strong>Development preview only.</strong> No live credit repair, real disputes, financial document uploads or physical mailings. Use fictional information only.</p>
+      <p>Try the Overview, Credit Reports, Dispute Center, Document Center, Mailing Center, Credit Education and Account Settings sections. Note confusing steps, broken links, mobile layout issues, and any error messages.</p>
+      <h4>Share feedback</h4>
+      <p>Describe what you tested, what you expected, what happened, and the device/browser you used. Do not include passwords, SSNs, real credit reports, or financial details.</p>
+      <form id="betaFeedbackForm">
+        <div class="field"><label for="betaCategory">Feedback type</label><select id="betaCategory" required><option value="Bug report">Bug report</option><option value="Suggestion">Suggestion</option><option value="Usability feedback">Usability feedback</option></select></div>
+        <div class="field"><label for="betaArea">Area tested</label><select id="betaArea" required><option>Registration / Login</option><option>Overview</option><option>Credit Reports</option><option>Dispute Center</option><option>Document Center</option><option>Mailing Center</option><option>Credit Education</option><option>Account Settings</option><option>Other</option></select></div>
+        <div class="field"><label for="betaDescription">What happened?</label><textarea id="betaDescription" required minlength="10" maxlength="2000" rows="5" placeholder="Tell us what worked or what needs improvement..."></textarea></div>
+        <button class="button" type="submit">Prepare feedback email</button>
+      </form>
+      <p class="dash-small">This opens your email app. Feedback is not sent until you confirm sending there. No feedback is stored in CreditPilot AI by this form.</p>
+    </div>
   </div>
   <div class="dash-panel hidden" data-section="settings">
     <div class="dashboard-panel"><h3>Account Settings</h3><p>Your account is authenticated through Supabase. This preview does not store credit report data.</p><div class="dash-detail"><span>Email address</span><strong id="settingsEmail">—</strong></div><div class="dash-detail"><span>Email verification</span><strong id="settingsVerified">Verified</strong></div><button class="button outline" type="button" id="settingsReset">Send password reset email</button><p class="dash-small">We'll email a password-reset link to your verified account address.</p></div>
@@ -1190,6 +1206,16 @@ function activateDashboardPanel(name) {
     else tab.removeAttribute('aria-current');
   });
 }
+el('betaFeedbackForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  const category=el('betaCategory').value;
+  const area=el('betaArea').value;
+  const description=el('betaDescription').value.trim();
+  if(description.length<10)return;
+  const subject='CreditPilot AI beta: '+category+' — '+area;
+  const body='Area: '+area+'\nType: '+category+'\n\nFeedback:\n'+description+'\n\nDevelopment preview only. No sensitive information included.';
+  window.location.href='mailto:marc@mycreditpilotai.com?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+});
 function populateDashboard(user) {
   el('welcomeText').textContent = 'Signed in as ' + user.email;
   el('settingsEmail').textContent = user.email;
