@@ -784,9 +784,10 @@ footer {
         <div class="field"><label for="betaCategory">Feedback type</label><select id="betaCategory" required><option value="Bug report">Bug report</option><option value="Suggestion">Suggestion</option><option value="Usability feedback">Usability feedback</option></select></div>
         <div class="field"><label for="betaArea">Area tested</label><select id="betaArea" required><option>Registration / Login</option><option>Overview</option><option>Credit Reports</option><option>Dispute Center</option><option>Document Center</option><option>Mailing Center</option><option>Credit Education</option><option>Account Settings</option><option>Other</option></select></div>
         <div class="field"><label for="betaDescription">What happened?</label><textarea id="betaDescription" required minlength="10" maxlength="2000" rows="5" placeholder="Tell us what worked or what needs improvement..."></textarea></div>
-        <button class="button" type="submit">Prepare feedback email</button>
+        <button class="button" type="submit" id="betaSubmit">Submit feedback</button>
+        <p id="betaResult" role="status" aria-live="polite"></p>
       </form>
-      <p class="dash-small">This opens your email app. Feedback is not sent until you confirm sending there. No feedback is stored in CreditPilot AI by this form.</p>
+      <p class="dash-small">Feedback is saved to the development Supabase database and is visible only to authorized owners. Do not include sensitive information.</p>
     </div>
   </div>
   <div class="dash-panel hidden" data-section="settings">
@@ -802,6 +803,7 @@ footer {
     <div class="metric">Verified accounts<strong id="ownerVerified">—</strong><small>Confirmed email addresses</small></div>
     <div class="metric">Owner accounts<strong id="ownerCount">—</strong><small>Privileged access</small></div>
   </div>
+  <div class="dashboard-panel"><h3>Beta Feedback</h3><p>Reports submitted by verified testers. Owner access required.</p><button class="button outline" type="button" id="ownerBetaRefresh">Refresh feedback</button><p id="ownerBetaStatus" role="status"></p><div id="ownerBetaItems"></div></div>
   <div class="dashboard-panel"><h3>Customer Directory</h3><p>Read-only preview. No passwords, credit reports, or dispute documents are accessible.</p>
   <button class="button outline" id="ownerRefresh" type="button">Refresh customers</button>
   <div class="owner-table-wrap"><table class="owner-table"><thead><tr><th>Account</th><th>Joined</th><th>Email status</th><th>Role</th></tr></thead><tbody id="ownerCustomers"><tr><td colspan="4">Loading authorized customer records…</td></tr></tbody></table></div>
@@ -1206,16 +1208,49 @@ function activateDashboardPanel(name) {
     else tab.removeAttribute('aria-current');
   });
 }
-el('betaFeedbackForm').addEventListener('submit',e=>{
-  e.preventDefault();
-  const category=el('betaCategory').value;
-  const area=el('betaArea').value;
-  const description=el('betaDescription').value.trim();
-  if(description.length<10)return;
-  const subject='CreditPilot AI beta: '+category+' — '+area;
-  const body='Area: '+area+'\nType: '+category+'\n\nFeedback:\n'+description+'\n\nDevelopment preview only. No sensitive information included.';
-  window.location.href='mailto:marc@mycreditpilotai.com?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+el('betaFeedbackForm').addEventListener('submit',async e=>{
+ e.preventDefault();
+ const button=el('betaSubmit');button.disabled=true;
+ el('betaResult').textContent='Submitting feedback…';
+ try {
+  if(!supabase)throw Error('Preview authentication is unavailable.');
+  const {data:{user},error:authError}=await supabase.auth.getUser();
+  if(authError||!user?.email_confirmed_at)throw Error('Please sign in with a verified account.');
+  const {error}=await supabase.rpc('creditpilot_submit_beta_feedback',{
+   p_category:el('betaCategory').value,p_area:el('betaArea').value,
+   p_description:el('betaDescription').value.trim()
+  });
+  if(error)throw error;
+  el('betaFeedbackForm').reset();
+  el('betaResult').textContent='Thank you! Your feedback was saved for the CreditPilot AI owners.';
+ }catch(err){el('betaResult').textContent='Feedback could not be saved: '+(err.message||'Please try again.');}
+ finally{button.disabled=false;}
 });
+async function loadOwnerBetaFeedback(){
+ const status=el('ownerBetaStatus'),items=el('ownerBetaItems');
+ status.textContent='Loading feedback…';items.replaceChildren();
+ try{
+  const {data:{user},error:authError}=await supabase.auth.getUser();
+  if(authError||!user?.email_confirmed_at)throw Error('Verified login required.');
+  const {data:allowed,error:ownerError}=await supabase.rpc('creditpilot_is_owner');
+  if(ownerError||allowed!==true)throw Error('Owner access required.');
+  const {data,error}=await supabase.rpc('creditpilot_owner_beta_feedback');
+  if(error)throw error;
+  status.textContent=(data||[]).length+' recent feedback report(s).';
+  for(const report of data||[]){
+   const card=document.createElement('div');
+   card.style.cssText='border:1px solid #dbe6f5;border-radius:10px;padding:14px;margin:12px 0;white-space:pre-wrap;overflow-wrap:anywhere';
+   const head=document.createElement('strong');
+   head.textContent=report.category+' · '+report.area;
+   const info=document.createElement('p');
+   info.textContent=(report.customer_email||'Tester')+' · '+new Date(report.created_at).toLocaleString();
+   const detail=document.createElement('p');
+   detail.textContent=report.description;
+   card.append(head,info,detail);items.append(card);
+  }
+ }catch(err){status.textContent='Unable to load feedback: '+(err.message||'Unknown error');}
+}
+el('ownerBetaRefresh').addEventListener('click',()=>void loadOwnerBetaFeedback());
 function populateDashboard(user) {
   el('welcomeText').textContent = 'Signed in as ' + user.email;
   el('settingsEmail').textContent = user.email;
