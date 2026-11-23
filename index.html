@@ -976,6 +976,7 @@ async function loadOwnerConsole() {
     return;
   }
   showView('ownerView');
+  void loadOwnerBetaFeedback();
   el('ownerTotal').textContent=String(customers.length);
   el('ownerVerified').textContent=String(customers.filter(c=>c.email_verified).length);
   el('ownerCount').textContent=String(customers.filter(c=>c.is_owner).length);
