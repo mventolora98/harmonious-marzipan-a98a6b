@@ -833,6 +833,7 @@ footer {
     <div class="metric">Owner accounts<strong id="ownerCount">—</strong><small>Privileged access</small></div>
   </div>
   <div class="dashboard-panel"><h3>Beta Feedback</h3><p>Reports submitted by verified testers. Owner access required.</p><button class="button outline" type="button" id="ownerBetaRefresh">Refresh feedback</button><p id="ownerBetaStatus" role="status"></p><div id="ownerBetaItems"></div></div>
+  <div class="dashboard-panel"><h3>Realtor Referral Inquiries</h3><p>Voluntary information requests only. No referral fees or credit reports.</p><button class="button outline" type="button" id="ownerReferralRefresh">Refresh referrals</button><p id="ownerReferralStatus" role="status"></p><div id="ownerReferralItems"></div></div>
   <div class="dashboard-panel"><h3>Customer Directory</h3><p>Read-only preview. No passwords, credit reports, or dispute documents are accessible.</p>
   <button class="button outline" id="ownerRefresh" type="button">Refresh customers</button>
   <div class="owner-table-wrap"><table class="owner-table"><thead><tr><th>Account</th><th>Joined</th><th>Email status</th><th>Role</th></tr></thead><tbody id="ownerCustomers"><tr><td colspan="4">Loading authorized customer records…</td></tr></tbody></table></div>
@@ -1282,6 +1283,22 @@ async function loadOwnerBetaFeedback(){
  }catch(err){status.textContent='Unable to load feedback: '+(err.message||'Unknown error');}
 }
 el('ownerBetaRefresh').addEventListener('click',()=>void loadOwnerBetaFeedback());
+async function loadOwnerReferrals(){
+ const status=el('ownerReferralStatus'),items=el('ownerReferralItems');status.textContent='Loading referrals…';items.replaceChildren();
+ try{
+ if(!supabase)throw Error('Supabase unavailable');
+ const {data:{user},error:authError}=await supabase.auth.getUser();
+ if(authError||!user?.email_confirmed_at)throw Error('Verified login required');
+ const {data:allowed,error:ownerError}=await supabase.rpc('creditpilot_is_owner');
+ if(ownerError||allowed!==true)throw Error('Owner access required');
+ const {data,error}=await supabase.rpc('creditpilot_owner_referrals');if(error)throw error;
+ const rows=data||[];status.textContent=rows.length+' recent referral inquiry(s).';
+ for(const lead of rows){const card=document.createElement('div');card.style.cssText='border:1px solid #dbe6f5;border-radius:10px;padding:14px;margin:12px 0;overflow-wrap:anywhere';
+ for(const value of [lead.contact_name+' · '+lead.referral_code,lead.contact_email,new Date(lead.created_at).toLocaleString(),lead.status,lead.message||'No message']){const p=document.createElement('p');p.textContent=value;card.append(p)}items.append(card)}
+ }catch(err){status.textContent='Unable to load referrals: '+(err.message||'Unknown error')}
+}
+el('ownerReferralRefresh').addEventListener('click',()=>void loadOwnerReferrals());
+
 function populateDashboard(user) {
   el('welcomeText').textContent = 'Signed in as ' + user.email;
   el('settingsEmail').textContent = user.email;
