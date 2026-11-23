@@ -354,6 +354,17 @@ footer {
 .mailing-stages{padding-left:22px;color:var(--muted);line-height:2}
 .mailing-choice button:disabled{opacity:.55;cursor:not-allowed}
 @media(max-width:720px){.mailing-layout{grid-template-columns:1fr}}
+.founders{margin-top:44px;padding:34px;background:#fff;border:1px solid #dbe6f5;border-radius:18px}
+.founders h3{font-size:clamp(25px,3vw,34px);color:var(--navy);line-height:1.25;margin:14px 0 18px}
+.founders-intro{line-height:1.85;color:var(--muted);max-width:900px}
+.founder-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:25px}
+.founder-card{display:flex;align-items:flex-start;gap:17px;background:var(--bg);border:1px solid #dbe6f5;border-radius:14px;padding:22px}
+.founder-monogram{flex:0 0 64px;width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--navy),var(--blue));color:#fff;display:grid;place-items:center;font-weight:800;font-size:21px}
+.founder-card h4{font-size:19px;margin:0 0 5px;color:var(--navy)}
+.founder-card p{color:var(--muted);line-height:1.65;margin:8px 0 0}
+.founder-card .founder-role{font-size:13px;font-weight:700;color:#1762c8;margin:0}
+.founders-note{font-size:13px;color:var(--muted);margin:20px 0 0}
+@media(max-width:700px){.founders{padding:22px}.founder-grid{grid-template-columns:1fr}.founder-card{padding:18px}.founder-monogram{flex-basis:52px;width:52px;height:52px}}
 </style>
 </head>
 
@@ -450,6 +461,22 @@ footer {
       We believe people deserve clear explanations,
       practical tools, and control over their own information.
     </p>
+    <div class="founders" aria-labelledby="founders-title">
+      <div class="eyebrow">Meet the founders</div>
+      <h3 id="founders-title">Two Founders. One Mission. Your Financial Future.</h3>
+      <p class="founders-intro">CreditPilot AI was founded by Marc Ventolora and Jennifer, two entrepreneurs who believe everyone deserves a fair opportunity to build a stronger financial future. Combining Marc's background in computer science and technology with Jennifer's focus on business management and operations, we're building CreditPilot AI to make credit information easier to understand and navigate. Through financial education and thoughtfully designed technology, our goal is to give people clearer information, practical tools, and greater confidence in their next steps. As equal partners, we share a commitment to transparency, integrity, innovation, and treating people with care.</p>
+      <div class="founder-grid">
+        <article class="founder-card">
+          <div class="founder-monogram" aria-hidden="true">MV</div>
+          <div><h4>Marc Ventolora</h4><p class="founder-role">Co-Founder · Technology &amp; Development</p><p>Leads software development and technical operations, turning our vision into accessible digital tools.</p></div>
+        </article>
+        <article class="founder-card">
+          <div class="founder-monogram" aria-hidden="true">J</div>
+          <div><h4>Jennifer</h4><p class="founder-role">Co-Founder · Business &amp; Operations</p><p>Leads business operations and helps shape a thoughtful, customer-centered experience.</p></div>
+        </article>
+      </div>
+      <p class="founders-note">CreditPilot AI is currently in development. Credit analysis and dispute services are not yet live, and no credit outcomes are guaranteed.</p>
+    </div>
     <div class="steps">
       <div class="step">
         <b>1</b>
