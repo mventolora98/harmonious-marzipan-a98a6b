@@ -833,7 +833,18 @@ footer {
     <div class="metric">Owner accounts<strong id="ownerCount">—</strong><small>Privileged access</small></div>
   </div>
   <div class="dashboard-panel"><h3>Beta Feedback</h3><p>Reports submitted by verified testers. Owner access required.</p><button class="button outline" type="button" id="ownerBetaRefresh">Refresh feedback</button><p id="ownerBetaStatus" role="status"></p><div id="ownerBetaItems"></div></div>
-  <div class="dashboard-panel"><h3>Realtor Referral Inquiries</h3><p>Voluntary information requests only. No referral fees or credit reports.</p><button class="button outline" type="button" id="ownerReferralRefresh">Refresh referrals</button><p id="ownerReferralStatus" role="status"></p><div id="ownerReferralItems"></div></div>
+  <div class="dashboard-panel"><h3>Realtor Referral Inquiries</h3><p>Voluntary information requests only. No referral fees or credit reports.</p><div class="dashboard-grid" style="margin:18px 0">
+<div class="metric">Total inquiries<strong id="refTotal">—</strong><small>Latest 250 inquiries</small></div>
+<div class="metric">New leads<strong id="refNew">—</strong><small>Awaiting contact</small></div>
+<div class="metric">Contacted<strong id="refContacted">—</strong><small>Follow-up started</small></div>
+<div class="metric">Closed<strong id="refClosed">—</strong><small>Completed inquiries</small></div>
+</div>
+<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+<button class="button outline" type="button" id="ownerReferralRefresh">Refresh referrals</button>
+<label for="refPartnerFilter">Partner:</label><select id="refPartnerFilter" style="padding:10px;border-radius:8px;border:1px solid #cbd7e8"><option value="all">All partners</option></select>
+</div>
+<div id="refPartnerBreakdown" class="dash-small"></div>
+<p id="ownerReferralStatus" role="status"></p><div id="ownerReferralItems"></div></div>
   <div class="dashboard-panel"><h3>Customer Directory</h3><p>Read-only preview. No passwords, credit reports, or dispute documents are accessible.</p>
   <button class="button outline" id="ownerRefresh" type="button">Refresh customers</button>
   <div class="owner-table-wrap"><table class="owner-table"><thead><tr><th>Account</th><th>Joined</th><th>Email status</th><th>Role</th></tr></thead><tbody id="ownerCustomers"><tr><td colspan="4">Loading authorized customer records…</td></tr></tbody></table></div>
@@ -1008,6 +1019,7 @@ async function loadOwnerConsole() {
   }
   showView('ownerView');
   void loadOwnerBetaFeedback();
+  void loadOwnerReferrals();
   el('ownerTotal').textContent=String(customers.length);
   el('ownerVerified').textContent=String(customers.filter(c=>c.email_verified).length);
   el('ownerCount').textContent=String(customers.filter(c=>c.is_owner).length);
@@ -1283,8 +1295,48 @@ async function loadOwnerBetaFeedback(){
  }catch(err){status.textContent='Unable to load feedback: '+(err.message||'Unknown error');}
 }
 el('ownerBetaRefresh').addEventListener('click',()=>void loadOwnerBetaFeedback());
+let referralRows=[];
+function renderOwnerReferrals(){
+ const rows=referralRows,items=el('ownerReferralItems'),filter=el('refPartnerFilter');
+ el('refTotal').textContent=rows.length;
+ for(const [id,state] of [['refNew','new'],['refContacted','contacted'],['refClosed','closed']])
+  el(id).textContent=rows.filter(x=>x.status===state).length;
+ const counts={};for(const r of rows)counts[r.referral_code]=(counts[r.referral_code]||0)+1;
+ const breakdown=el('refPartnerBreakdown');breakdown.replaceChildren();
+ const title=document.createElement('strong');title.textContent='Inquiries by referral partner';breakdown.append(title);
+ const summary=document.createElement('p');summary.textContent=Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+' ('+v+')').join(' · ')||'No inquiries yet';breakdown.append(summary);
+ const selected=filter.value;filter.replaceChildren();
+ for(const [value,label] of [['all','All partners'],...Object.keys(counts).sort().map(x=>[x,x==='brett'?'Brett (brett)':x])]){
+ const option=document.createElement('option');option.value=value;option.textContent=label;filter.append(option)}
+ filter.value=selected==='all'||counts[selected]?selected:'all';
+ items.replaceChildren();const visible=rows.filter(x=>filter.value==='all'||x.referral_code===filter.value);
+ el('ownerReferralStatus').textContent=visible.length+' displayed of '+rows.length+' recent inquiry(s).';
+ for(const lead of visible){
+ const card=document.createElement('div');card.style.cssText='border:1px solid #dbe6f5;border-radius:10px;padding:14px;margin:12px 0;overflow-wrap:anywhere';
+ const heading=document.createElement('strong');heading.textContent=lead.contact_name+' · '+(lead.referral_code==='brett'?'Brett':lead.referral_code);card.append(heading);
+ for(const value of [lead.contact_email,new Date(lead.created_at).toLocaleString(),lead.message||'No message']){const p=document.createElement('p');p.textContent=value;card.append(p)}
+ const label=document.createElement('label');label.textContent='Lead status: ';const select=document.createElement('select');
+ select.style.cssText='padding:8px;border:1px solid #cbd7e8;border-radius:8px;margin:8px';
+ for(const value of ['new','contacted','closed']){const opt=document.createElement('option');opt.value=value;opt.textContent=value.charAt(0).toUpperCase()+value.slice(1);select.append(opt)}
+ select.value=lead.status;label.append(select);card.append(label);
+ const feedback=document.createElement('span');feedback.setAttribute('role','status');card.append(feedback);
+ select.addEventListener('change',async()=>{
+ const old=lead.status;select.disabled=true;feedback.textContent=' Saving…';
+ try{
+ const {data:{user},error:authError}=await supabase.auth.getUser();
+ if(authError||!user?.email_confirmed_at)throw Error('Verified owner login required');
+ const {data:allowed,error:ownerError}=await supabase.rpc('creditpilot_is_owner');
+ if(ownerError||allowed!==true)throw Error('Owner access required');
+ const {data,error}=await supabase.rpc('creditpilot_owner_update_referral_status',{p_id:lead.id,p_status:select.value});
+ if(error)throw error;if(data!==true)throw Error('Inquiry not found');
+ lead.status=select.value;renderOwnerReferrals();
+ }catch(err){select.value=old;feedback.textContent=' Could not save: '+(err.message||'Try again')}
+ finally{select.disabled=false}
+ });items.append(card)
+ }
+}
 async function loadOwnerReferrals(){
- const status=el('ownerReferralStatus'),items=el('ownerReferralItems');status.textContent='Loading referrals…';items.replaceChildren();
+ const status=el('ownerReferralStatus');status.textContent='Loading referrals…';
  try{
  if(!supabase)throw Error('Supabase unavailable');
  const {data:{user},error:authError}=await supabase.auth.getUser();
@@ -1292,11 +1344,10 @@ async function loadOwnerReferrals(){
  const {data:allowed,error:ownerError}=await supabase.rpc('creditpilot_is_owner');
  if(ownerError||allowed!==true)throw Error('Owner access required');
  const {data,error}=await supabase.rpc('creditpilot_owner_referrals');if(error)throw error;
- const rows=data||[];status.textContent=rows.length+' recent referral inquiry(s).';
- for(const lead of rows){const card=document.createElement('div');card.style.cssText='border:1px solid #dbe6f5;border-radius:10px;padding:14px;margin:12px 0;overflow-wrap:anywhere';
- for(const value of [lead.contact_name+' · '+lead.referral_code,lead.contact_email,new Date(lead.created_at).toLocaleString(),lead.status,lead.message||'No message']){const p=document.createElement('p');p.textContent=value;card.append(p)}items.append(card)}
+ referralRows=data||[];renderOwnerReferrals();
  }catch(err){status.textContent='Unable to load referrals: '+(err.message||'Unknown error')}
 }
+el('refPartnerFilter').addEventListener('change',renderOwnerReferrals);
 el('ownerReferralRefresh').addEventListener('click',()=>void loadOwnerReferrals());
 
 function populateDashboard(user) {
